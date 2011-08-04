@@ -200,7 +200,7 @@ class Facebooked::AdminController < ModuleController
 
       begin
         @client_data = JSON.parse(self.facebook.get("/#{self.app_id}", {:metadata => 1})).symbolize_keys
-      rescue OAuth2::HTTPError, OAuth2::ErrorWithResponse, OAuth2::AccessDenied => e
+      rescue OAuth2::Error
         Rails.logger.error e
       end
 
@@ -209,12 +209,13 @@ class Facebooked::AdminController < ModuleController
 
     def client_access_token
       return @client_access_token if @client_access_token
+      return nil if self.app_id.blank? || self.secret.blank?
 
       begin
-        response = self.client.request(:post, self.client.access_token_url, {:client_id => self.app_id, :client_secret => self.secret, :type => 'client_cred'})
+        response = self.client.request(:post, self.client.token_url, {:client_id => self.app_id, :client_secret => self.secret, :type => 'client_cred'})
         params   = Rack::Utils.parse_query(response)
         return @client_access_token = params['access_token']
-      rescue Errno::ECONNRESET, SocketError, OAuth2::HTTPError, OAuth2::ErrorWithResponse, OAuth2::AccessDenied => e
+      rescue Errno::ECONNRESET, SocketError, OAuth2::Error
         Rails.logger.error e
       end
       nil
@@ -240,7 +241,7 @@ class Facebooked::AdminController < ModuleController
           else
             oauth_user.end_user.unsubscribe if oauth_user.end_user.user_level != EndUser::UserLevel::OPT_OUT
           end
-        rescue Errno::ECONNRESET, SocketError, OAuth2::HTTPError, OAuth2::ErrorWithResponse, OAuth2::AccessDenied, JSON::ParserError => e
+        rescue Errno::ECONNRESET, SocketError, OAuth2::Error
           Rails.logger.error e
         end
       end

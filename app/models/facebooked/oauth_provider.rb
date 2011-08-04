@@ -22,12 +22,9 @@ class Facebooked::OauthProvider < OauthProvider::Base
       self.token = access_token.token
       self.refresh_token = access_token.refresh_token
       true
-    rescue OAuth2::HTTPError => e
+    rescue OAuth2::Error => e
       attempts = attempts.succ
       retry unless attempts > 3
-      Rails.logger.error e
-      false
-    rescue OAuth2::ErrorWithResponse, OAuth2::AccessDenied => e
       Rails.logger.error e
       false
     rescue Timeout::Error => e
@@ -83,7 +80,7 @@ class Facebooked::OauthProvider < OauthProvider::Base
     attempts = 1
     begin
       self.facebook.get(path, params, headers)
-    rescue OAuth2::HTTPError => e
+    rescue OAuth2::Error => e
       attempts = attempts.succ
       retry unless attempts > 3
       Rails.logger.error e
@@ -94,7 +91,7 @@ class Facebooked::OauthProvider < OauthProvider::Base
   def post(path, params={}, headers={})
     begin
       self.facebook.post(path, params, headers)
-    rescue OAuth2::HTTPError => e
+    rescue OAuth2::Error => e
       '{}'
     end
   end
