@@ -1,4 +1,3 @@
-require 'oauth2'
 
 class Facebooked::OauthProvider < OauthProvider::Base
   def self.oauth_provider_handler_info
