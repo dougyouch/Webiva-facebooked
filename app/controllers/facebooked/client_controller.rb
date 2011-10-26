@@ -3,6 +3,10 @@ class Facebooked::ClientController < Oauth::ClientController
 
   skip_before_filter :verify_authenticity_token, :only => ['deauthorize']
 
+  def callback
+    super
+  end
+
   def deauthorize
     signed_request = Facebooked::SignedRequest.new params[:signed_request]
     if signed_request.valid?

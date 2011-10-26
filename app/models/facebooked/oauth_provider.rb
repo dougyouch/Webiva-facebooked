@@ -8,7 +8,7 @@ class Facebooked::OauthProvider < OauthProvider::Base
 
   def authorize_url
     self.session[:redirect_uri] = self.redirect_uri
-    client.web_server.authorize_url(:redirect_uri => self.redirect_uri, :scope => Facebooked::AdminController.module_options.scopes)
+    client.auth_code.authorize_url(:redirect_uri => self.redirect_uri, :scope => Facebooked::AdminController.module_options.scopes)
   end
 
   def access_token(params)
@@ -16,9 +16,11 @@ class Facebooked::OauthProvider < OauthProvider::Base
 
     self.redirect_uri = self.session[:redirect_uri]
 
+    OAuth2::Response.register_parser(:text, 'text/plain') { |body| Rack::Utils.parse_query(body) }
+
     attempts = 1
     begin
-      access_token = client.web_server.get_access_token(params[:code], :redirect_uri => self.redirect_uri)
+      access_token = client.auth_code.get_token(params[:code], :redirect_uri => self.redirect_uri)
       self.token = access_token.token
       self.refresh_token = access_token.refresh_token
       true
@@ -34,11 +36,11 @@ class Facebooked::OauthProvider < OauthProvider::Base
   end
 
   def client
-    @client ||= OAuth2::Client.new(Facebooked::AdminController.module_options.app_id, Facebooked::AdminController.module_options.secret, :site => 'https://graph.facebook.com')
+    @client ||= OAuth2::Client.new(Facebooked::AdminController.module_options.app_id, Facebooked::AdminController.module_options.secret, :site => 'https://graph.facebook.com', :token_url => '/oauth/access_token')
   end
 
   def facebook
-    @facebook ||= OAuth2::AccessToken.new self.client, self.token, self.refresh_token
+    @facebook ||= OAuth2::AccessToken.new self.client, self.token, :param_name => 'access_token', :mode => :query
   end
 
   def provider_id
@@ -79,7 +81,7 @@ class Facebooked::OauthProvider < OauthProvider::Base
   def get(path, params={}, headers={})
     attempts = 1
     begin
-      self.facebook.get(path, params, headers)
+      self.facebook.get(path, :params => params, :headers => headers).body
     rescue OAuth2::Error => e
       attempts = attempts.succ
       retry unless attempts > 3
@@ -90,7 +92,7 @@ class Facebooked::OauthProvider < OauthProvider::Base
 
   def post(path, params={}, headers={})
     begin
-      self.facebook.post(path, params, headers)
+      self.facebook.post(path, :params => params, :headers => headers).body
     rescue OAuth2::Error => e
       '{}'
     end
